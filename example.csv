@@ -1,0 +1,4 @@
+email,name,role,password,auto_groups,expires_in
+alice@example.com,Alice Zhang,user,SecurePass1!,ch8i4ug6lnn4g9hqv7m0,259200
+bob@example.com,Bob Li,user,AnotherPass2@,ch8i4ug6lnn4g9hqv7m0,
+charlie@example.com,Charlie Wu,user,ThirdPass3#,ch8i4ug6lnn4g9hqv7m0,

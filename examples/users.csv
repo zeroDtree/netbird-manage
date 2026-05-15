@@ -1,0 +1,4 @@
+email,name,role,password,auto_groups
+alice@example.com,Alice Zhang,user,SecurePass1!,default_auto_group
+bob@example.com,Bob Li,user,AnotherPass2@,default_auto_group
+charlie@example.com,Charlie Wu,user,ThirdPass3#,default_auto_group

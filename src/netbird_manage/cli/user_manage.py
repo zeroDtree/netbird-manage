@@ -15,7 +15,7 @@ delete columns:
 Environment: NETBIRD_API_BASE, NETBIRD_TOKEN (or --token).
 Optional: a ``.env`` file in the current working directory is loaded automatically (same variable names).
 
-Run: cd netbird && uv sync && uv run python user_manage.py import --file users.csv --dry-run
+Run: uv sync && uv run user-manage import --file users.csv --dry-run
 """
 
 from __future__ import annotations
@@ -28,29 +28,29 @@ import time
 from typing import Any
 
 try:
-    from dotenv import load_dotenv
     import requests
+    from dotenv import load_dotenv
 
-    from netbird_cli import netbird_connection_parent_parser
-    from netbird_client import (
+    from ..utils.cli import netbird_connection_parent_parser
+    from ..utils.client import (
         api_url,
         json_headers,
         request_with_retry,
         response_status,
         session_with_token,
     )
-    from netbird_groups import fetch_groups_map
-    from netbird_users import (
+    from ..utils.netbird_validation import validate_email
+    from ..vendor_api.groups import fetch_groups_map
+    from ..vendor_api.users import (
         delete_user_by_id,
         email_to_user_id,
         existing_emails_from_users,
         fetch_users,
     )
-    from netbird_validation import validate_email
 except ImportError:
-    print("Install dependencies: cd netbird && uv sync", file=sys.stderr)
+    print("Install dependencies: uv sync", file=sys.stderr)
     print(
-        "Then: uv run python user_manage.py import|delete ...  (or: uv run netbird-user-manage ...)",
+        "Then: uv run user-manage import|delete ...",
         file=sys.stderr,
     )
     raise
@@ -106,7 +106,7 @@ def load_rows_xlsx(path: str) -> list[dict[str, str]]:
         import openpyxl
     except ImportError:
         raise RuntimeError(
-            "Excel support requires: cd netbird && uv sync (includes openpyxl)"
+            "Excel support requires: uv sync (includes openpyxl)"
         ) from None
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     ws = wb.active
@@ -516,7 +516,7 @@ Destructive: pass --yes to perform DELETE (not needed with --dry-run).
 
 
 def main() -> None:
-    """Console entry point for ``uv run netbird-user-manage`` / pip install."""
+    """Console entry point for ``uv run user-manage`` / pip install."""
     raise SystemExit(run())
 
 

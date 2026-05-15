@@ -8,23 +8,24 @@ from typing import Any
 
 import requests
 
-from netbird_client import response_status
-from netbird_groups import (
+from ..utils.client import response_status
+from ..utils.netbird_validation import validate_email
+from ..vendor_api.groups import (
     create_group,
+    delete_group,
     fetch_group,
     find_group_id_by_exact_name,
     peer_ids_from_group_dict,
     put_group_peers_and_resources,
     resources_from_group_dict,
 )
-from netbird_peers import resolve_peer_id
-from netbird_policies import ensure_pairing_policy
-from netbird_users import (
+from ..vendor_api.peers import resolve_peer_id
+from ..vendor_api.policies import delete_policy, ensure_pairing_policy, fetch_policies
+from ..vendor_api.users import (
     fetch_users,
     put_user_auto_groups,
     user_by_email,
 )
-from netbird_validation import validate_email
 
 
 def user_slug(email: str, *, max_len: int = 48) -> str:
@@ -67,7 +68,7 @@ def ensure_user_groups_and_policy(
     name_prefix: str,
     create_policy: bool,
     bidirectional: bool,
-    update_user_auto_groups: bool,
+    add_client_group_to_auto_groups: bool,
     dry_run: bool,
 ) -> dict[str, Any]:
     """Create client/server groups; optionally pairing policy and user auto_groups."""
@@ -145,7 +146,7 @@ def ensure_user_groups_and_policy(
                 "messages": messages,
             }
 
-    if update_user_auto_groups:
+    if add_client_group_to_auto_groups:
         ag_raw = u.get("auto_groups") or []
         ag = [str(x) for x in ag_raw] if isinstance(ag_raw, list) else []
         if cid not in ag:
@@ -182,6 +183,118 @@ def ensure_user_groups_and_policy(
         "client_group_id": cid,
         "server_group_id": sid,
         "policy_name": pname if create_policy else None,
+        "messages": messages,
+    }
+
+
+def remove_user_groups_and_policy(
+    session: requests.Session,
+    base: str,
+    email: str,
+    *,
+    name_prefix: str,
+    remove_policy: bool,
+    strip_client_auto_group: bool,
+    dry_run: bool,
+) -> dict[str, Any]:
+    """Remove per-user client/server groups and optional pairing policy (ensure-user-groups teardown)."""
+    err = validate_email(email)
+    if err:
+        return {"ok": False, "error": err, "email": email}
+
+    users = fetch_users(session, base)
+    u = user_by_email(users, email)
+    if not u:
+        return {"ok": False, "error": "no user with this email", "email": email}
+
+    user_id = str(u.get("id", ""))
+    if not user_id:
+        return {"ok": False, "error": "user has no id", "email": email}
+
+    slug = user_slug(email)
+    g_client, g_server = client_server_group_names(slug, name_prefix)
+    pname = policy_name(slug, name_prefix)
+
+    messages: list[str] = []
+    cid = find_group_id_by_exact_name(session, base, g_client)
+    sid = find_group_id_by_exact_name(session, base, g_server)
+
+    if remove_policy:
+        policies = fetch_policies(session, base)
+        existing = next((p for p in policies if p.get("name") == pname), None)
+        if existing and isinstance(existing, dict) and existing.get("id"):
+            pid = str(existing["id"])
+            if dry_run:
+                messages.append(f"would DELETE policy {pname!r} ({pid})")
+            else:
+                ok, msg = delete_policy(session, base, pid)
+                messages.append(msg)
+                if not ok:
+                    return {
+                        "ok": False,
+                        "error": msg,
+                        "email": email,
+                        "messages": messages,
+                    }
+        else:
+            messages.append(f"policy not found (skip): {pname}")
+
+    if strip_client_auto_group and cid:
+        ag_raw = u.get("auto_groups") or []
+        ag = [str(x) for x in ag_raw] if isinstance(ag_raw, list) else []
+        if cid in ag:
+            new_ag = [x for x in ag if x != cid]
+            role = str(u.get("role", "user"))
+            is_blocked = bool(u.get("is_blocked", False))
+            if dry_run:
+                messages.append(f"would PUT user auto_groups (remove clients group): {new_ag}")
+            else:
+                pr = put_user_auto_groups(
+                    session,
+                    base,
+                    user_id,
+                    role=role,
+                    is_blocked=is_blocked,
+                    auto_groups=new_ag,
+                )
+                if response_status(pr) >= 400:
+                    return {
+                        "ok": False,
+                        "error": f"update user failed: {response_status(pr)} {pr.text[:500]}",
+                        "email": email,
+                        "messages": messages,
+                    }
+                messages.append("user auto_groups updated (clients group removed)")
+        else:
+            messages.append("clients group not in user auto_groups (skip)")
+
+    for gid, gname in ((sid, g_server), (cid, g_client)):
+        if not gid:
+            messages.append(f"group not found (skip): {gname}")
+            continue
+        if dry_run:
+            messages.append(f"would DELETE group {gname!r} ({gid})")
+        else:
+            ok, msg = delete_group(session, base, gid)
+            messages.append(f"{gname}: {msg}")
+            if not ok:
+                return {
+                    "ok": False,
+                    "error": msg,
+                    "email": email,
+                    "messages": messages,
+                }
+
+    return {
+        "ok": True,
+        "email": email,
+        "slug": slug,
+        "user_id": user_id,
+        "client_group": g_client,
+        "server_group": g_server,
+        "client_group_id": cid,
+        "server_group_id": sid,
+        "policy_name": pname if remove_policy else None,
         "messages": messages,
     }
 

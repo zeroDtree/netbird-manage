@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import os
 
-
 DEFAULT_API_BASE = "https://api.netbird.io"
 
 

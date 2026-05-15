@@ -8,7 +8,12 @@ from urllib.parse import quote
 
 import requests
 
-from netbird_client import api_url, json_headers, request_with_retry, response_status
+from ..utils.client import (
+    api_url,
+    json_headers,
+    request_with_retry,
+    response_status,
+)
 
 
 def fetch_groups_map(session: requests.Session, base: str) -> dict[str, str]:
@@ -37,6 +42,9 @@ def find_group_id_by_exact_name(
 ) -> str | None:
     url = api_url(base, f"/api/groups?name={quote(name, safe='')}")
     r = request_with_retry(session, "GET", url, headers={"Accept": "application/json"})
+    # Some management APIs return 404 when the name filter matches no group instead of 200 + [].
+    if response_status(r) == 404:
+        return None
     r.raise_for_status()
     data = r.json()
     if not isinstance(data, list):
@@ -130,3 +138,18 @@ def resources_from_group_dict(group: dict[str, Any]) -> list[dict[str, Any]]:
         if isinstance(item, dict) and item.get("id") and item.get("type"):
             norm.append({"id": str(item["id"]), "type": str(item["type"])})
     return norm
+
+
+def delete_group(
+    session: requests.Session, base: str, group_id: str
+) -> tuple[bool, str]:
+    """DELETE /api/groups/{id}. Returns (ok, message). 404 is treated as success."""
+    path = f"/api/groups/{quote(group_id, safe='')}"
+    url = api_url(base, path)
+    r = request_with_retry(session, "DELETE", url, headers={"Accept": "application/json"})
+    code = response_status(r)
+    if code == 404:
+        return True, "group already absent (404)"
+    if code >= 400:
+        return False, f"delete group failed: {code} {r.text[:500]}"
+    return True, "group deleted"

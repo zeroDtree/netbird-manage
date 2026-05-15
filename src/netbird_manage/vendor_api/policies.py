@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import quote
 
 import requests
 
-from netbird_client import api_url, json_headers, request_with_retry, response_status
+from ..utils.client import (
+    api_url,
+    json_headers,
+    request_with_retry,
+    response_status,
+)
 
 
 def fetch_policies(session: requests.Session, base: str) -> list[dict[str, Any]]:
@@ -59,3 +65,18 @@ def ensure_pairing_policy(
     if response_status(r) >= 400:
         return False, f"create policy failed: {response_status(r)} {r.text[:500]}"
     return True, "policy created"
+
+
+def delete_policy(
+    session: requests.Session, base: str, policy_id: str
+) -> tuple[bool, str]:
+    """DELETE /api/policies/{id}. Returns (ok, message). 404 is treated as success."""
+    path = f"/api/policies/{quote(policy_id, safe='')}"
+    url = api_url(base, path)
+    r = request_with_retry(session, "DELETE", url, headers={"Accept": "application/json"})
+    code = response_status(r)
+    if code == 404:
+        return True, "policy already absent (404)"
+    if code >= 400:
+        return False, f"delete policy failed: {code} {r.text[:500]}"
+    return True, "policy deleted"

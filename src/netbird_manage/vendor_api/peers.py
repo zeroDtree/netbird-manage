@@ -6,7 +6,7 @@ from urllib.parse import quote
 
 import requests
 
-from netbird_client import api_url, request_with_retry, response_status
+from ..utils.client import api_url, request_with_retry, response_status
 
 
 def resolve_peer_id(

@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 import requests
 
-from netbird_client import api_url, json_headers, request_with_retry
+from ..utils.client import api_url, json_headers, request_with_retry
 
 
 def fetch_users(session: requests.Session, base: str) -> list[dict[str, Any]]:

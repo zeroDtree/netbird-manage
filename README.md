@@ -9,50 +9,97 @@ cp .env.example .env   # NETBIRD_TOKEN (and NETBIRD_API_BASE if self-hosted)
 uv sync
 ```
 
-## Users (`user_manage.py`)
+## Users
 
 ```bash
-uv run python user_manage.py import -f example.csv
-uv run python user_manage.py delete -f example_delete.csv --yes
+uv run user-manage import -f examples/users.csv
+uv run user-manage delete -f examples/users_to_delete.csv --yes
 ```
 
-Input: `.csv` or `.xlsx`; headers are case-insensitive (spaces become underscores). Options: **`uv run python user_manage.py import --help`** and **`… delete --help`**.
+Input: `.csv` or `.xlsx`; headers are case-insensitive (spaces become underscores). 
 
-Installed wheel: **`uv run netbird-user-manage import|delete …`**.
+For all flags and options, run 
+- **`uv run user-manage import --help`**
+- **`uv run user-manage delete --help`**.
 
-## Assign (`policy_manage.py`)
+## Groups and server peers
 
-Creates per-user **clients** / **servers** NetBird groups, can add a **policy** (clients → servers), and **assign** moves a peer into or out of the user’s **servers** group.
+Creates per-user **clients** / **servers** NetBird groups, can add a **policy** (clients → servers), and **manage-server-peer** moves a peer into or out of the user’s **servers** group. **remove-user-groups** tears down those groups (and optional policy / auto_groups changes).
 
 ```bash
-uv run python policy_manage.py ensure-user-groups --email alice@example.com --create-policy --update-user-auto-groups
-uv run python policy_manage.py assign --email alice@example.com --peer-name my-server-host
+# Per-user clients/servers groups, pairing policy, and clients group in auto_groups.
+uv run policy-manage ensure-user-groups \
+  --email alice@example.com \
+  --create-policy \
+  --add-client-group-to-auto-groups
+
+# Put a server machine (peer) into that user's servers group (hostname must match exactly).
+uv run policy-manage manage-server-peer \
+  --email alice@example.com \
+  --peer-name my-server-host
+
+# Preview teardown (no NetBird writes).
+uv run policy-manage remove-user-groups \
+  --email alice@example.com \
+  --dry-run
+
+# Delete groups and pairing policy (requires --yes).
+uv run policy-manage remove-user-groups \
+  --email alice@example.com \
+  --yes
 ```
 
-Installed wheel: **`uv run netbird-assign …`**. All flags: **`uv run python policy_manage.py --help`** and per subcommand **`… ensure-user-groups --help`** / **`… assign --help`**.
+For all options: **`uv run policy-manage --help`**. For one subcommand only: 
+- **`uv run policy-manage ensure-user-groups --help`**
+- **`uv run policy-manage remove-user-groups --help`**
+- **`uv run policy-manage manage-server-peer --help`**.
 
-## HTTP API (`assign_api`, optional)
+## HTTP API (optional)
+
+Thin HTTP wrapper around the same flows as **`policy-manage`**: callers send a service Bearer token; the server uses **`NETBIRD_TOKEN`** to call NetBird.
+
+**Install and run** (default listen **`0.0.0.0:8080`**; override with **`ASSIGN_API_HOST`** / **`ASSIGN_API_PORT`**):
 
 ```bash
-uv sync --extra api
-export NETBIRD_TOKEN=…              # server only: calls NetBird
-export ASSIGN_SERVICE_TOKEN=…     # clients: Bearer for this API
-uv run netbird-assign-api         # default http://0.0.0.0:8080
+uv sync --all-groups --extra api
+export NETBIRD_TOKEN=YOUR_NETBIRD_PAT          # server → NetBird Management API
+export ASSIGN_SERVICE_TOKEN=YOUR_SERVICE_TOKEN # clients → this API (Bearer)
+uv run expose-api
 ```
 
-Use **`Authorization: Bearer $ASSIGN_SERVICE_TOKEN`** and **`Content-Type: application/json`**. Request/response shapes: **`http://127.0.0.1:8080/docs`** (Swagger UI) while the server is running.
+**Clients:** send **`Authorization: Bearer $ASSIGN_SERVICE_TOKEN`** and **`Content-Type: application/json`**. While the server is up, OpenAPI is at **`http://127.0.0.1:8080/docs`** (adjust host/port if you changed them).
+
+**Examples** (`API_BASE` matches where you bound the server):
 
 ```bash
-curl -sS http://127.0.0.1:8080/health
-curl -sS -X POST http://127.0.0.1:8080/ensure-user-groups \
-  -H "Authorization: Bearer ${ASSIGN_SERVICE_TOKEN}" -H "Content-Type: application/json" \
-  -d '{"email":"alice@example.com","create_policy":true,"update_user_auto_groups":true}'
-curl -sS -X POST http://127.0.0.1:8080/assign \
-  -H "Authorization: Bearer ${ASSIGN_SERVICE_TOKEN}" -H "Content-Type: application/json" \
+API_BASE=http://127.0.0.1:8080
+
+curl -sS "$API_BASE/health"
+
+curl -sS -X POST "$API_BASE/ensure-user-groups" \
+  -H "Authorization: Bearer ${ASSIGN_SERVICE_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alice@example.com","create_policy":true,"add_client_group_to_auto_groups":true}'
+
+curl -sS -X POST "$API_BASE/manage-server-peer" \
+  -H "Authorization: Bearer ${ASSIGN_SERVICE_TOKEN}" \
+  -H "Content-Type: application/json" \
   -d '{"email":"alice@example.com","peer_name":"my-server-host"}'
-curl -sS -X DELETE http://127.0.0.1:8080/assign \
-  -H "Authorization: Bearer ${ASSIGN_SERVICE_TOKEN}" -H "Content-Type: application/json" \
+
+curl -sS -X DELETE "$API_BASE/manage-server-peer" \
+  -H "Authorization: Bearer ${ASSIGN_SERVICE_TOKEN}" \
+  -H "Content-Type: application/json" \
   -d '{"email":"alice@example.com","peer_name":"my-server-host"}'
+
+curl -sS -X DELETE "$API_BASE/remove-user-groups" \
+  -H "Authorization: Bearer ${ASSIGN_SERVICE_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alice@example.com","dry_run":true}'
+
+curl -sS -X DELETE "$API_BASE/remove-user-groups" \
+  -H "Authorization: Bearer ${ASSIGN_SERVICE_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alice@example.com"}'
 ```
 
-**Note:** `auto_groups` applies to every peer under that NetBird user; use **`assign`** (or setup keys) for machines that should live only in the **servers** group.
+**Note:** NetBird **`auto_groups`** applies to every peer under that user. For devices that should be **servers only** (members of the **servers** group), use **`manage-server-peer`** or setup keys—not only default auto-group behavior.

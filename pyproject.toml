@@ -1,5 +1,5 @@
 [project]
-name = "netbird-user-manage"
+name = "netbird_manage"
 version = "0.1.0"
 description = "NetBird bulk user import and machine-to-user assignment (CLI + optional HTTP API)"
 requires-python = ">=3.10"
@@ -16,24 +16,30 @@ api = [
 ]
 
 [project.scripts]
-netbird-user-manage = "user_manage:main"
-netbird-assign = "policy_manage:main"
-netbird-assign-api = "assign_api:main"
+user-manage = "netbird_manage.cli.user_manage:main"
+policy-manage = "netbird_manage.cli.policy_manage:main"
+expose-api = "netbird_manage.api.expose_api:main"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9.0",
+    "ty>=0.0.1a6",
+]
 
 [build-system]
 requires = ["hatchling>=1.18.0"]
 build-backend = "hatchling.build"
 
-# Ship the single CLI module at repo root (no package directory).
-[tool.hatch.build.targets.wheel.force-include]
-"user_manage.py" = "user_manage.py"
-"netbird_client.py" = "netbird_client.py"
-"netbird_cli.py" = "netbird_cli.py"
-"netbird_validation.py" = "netbird_validation.py"
-"netbird_users.py" = "netbird_users.py"
-"netbird_groups.py" = "netbird_groups.py"
-"netbird_policies.py" = "netbird_policies.py"
-"netbird_peers.py" = "netbird_peers.py"
-"assign_core.py" = "assign_core.py"
-"policy_manage.py" = "policy_manage.py"
-"assign_api.py" = "assign_api.py"
+[tool.hatch.build.targets.wheel]
+packages = ["src/netbird_manage"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.ty.src]
+include = ["src"]

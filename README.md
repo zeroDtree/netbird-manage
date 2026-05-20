@@ -22,6 +22,25 @@ For all flags and options, run
 - **`uv run user-manage import --help`**
 - **`uv run user-manage delete --help`**.
 
+## Server registration spreadsheet
+
+Convert [`data/服务器申请登记.xlsx`](data/服务器申请登记.xlsx) to import CSV with [`my/prepare_server_registration_import.py`](my/prepare_server_registration_import.py) (local script under `my/`, not part of the published package). Passwords that fail NetBird rules get **`Aa@`** appended (and **`1`** after that if a digit is still missing). Each user is assigned shared group **`client_group`** via the `auto_groups` column.
+
+```bash
+uv run python my/prepare_server_registration_import.py
+
+uv run user-manage import \
+  -f data/server_registration_import.csv \
+  --resolve-group-names \
+  --dry-run
+
+uv run user-manage import \
+  -f data/server_registration_import.csv \
+  --resolve-group-names
+```
+
+Outputs (gitignored under `data/`): `server_registration_import.csv`, `server_registration_passwords.csv` (original vs NetBird login password). Ensure group **`client_group`** exists in NetBird before import.
+
 ## Groups and server peers
 
 Creates per-user **clients** / **servers** NetBird groups, can add a **policy** (clients → servers), and **manage-server-peer** moves a peer into or out of the user’s **servers** group. **remove-user-groups** tears down those groups (and optional policy / auto_groups changes).

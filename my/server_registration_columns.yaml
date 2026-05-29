@@ -1,0 +1,5 @@
+# Spreadsheet column headers (as in Excel). Normalized by load_rows when reading xlsx.
+columns:
+  email: "邮箱（用作netbird登录账号）"
+  name: "申请人真实姓名"
+  password: "netbird初始登录密码"

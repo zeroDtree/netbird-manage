@@ -5,6 +5,7 @@ description = "NetBird bulk user import and machine-to-user assignment (CLI + op
 requires-python = ">=3.10"
 dependencies = [
     "python-dotenv>=1.0.0",
+    "pyyaml>=6.0.0",
     "requests>=2.28.0",
     "openpyxl>=3.1.0",
 ]
@@ -36,10 +37,10 @@ packages = ["src/netbird_manage"]
 [tool.ruff]
 target-version = "py310"
 line-length = 120
-src = ["src"]
+src = ["src", "my"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
 
 [tool.ty.src]
-include = ["src"]
+include = ["src", "my"]

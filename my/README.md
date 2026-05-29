@@ -4,6 +4,24 @@ Helper scripts for server-registration onboarding. Not part of the `netbird_mana
 
 **Do not commit** real spreadsheets, password CSVs, or `.env` under `data/` — they are gitignored and may contain personal data and plaintext passwords.
 
+## Quick start
+
+From repo root, after `data/服务器申请登记.xlsx` is in place and `NETBIRD_TOKEN` (and `SMTP_*` for step 3) are in `.env`:
+
+```bash
+# 1. Xlsx → import/password CSVs + delta for users not yet in NetBird
+uv run python my/prepare_server_registration_import.py
+
+# 2. Create NetBird accounts for delta rows only
+uv run user-manage import -f data/server_registration_import_delta.csv --resolve-group-names
+
+# 3. Email initial passwords to new users (delta password list)
+uv run python my/notify_netbird_passwords.py --send \
+  --csv data/server_registration_passwords_delta.csv
+```
+
+Preview import or notices first: add `--dry-run` to `user-manage import`, or use `notify_netbird_passwords.py --print` instead of `--send`.
+
 ## Server registration → NetBird import
 
 [`prepare_server_registration_import.py`](prepare_server_registration_import.py) converts `data/服务器申请登记.xlsx` into CSV files under `data/` for `user-manage import`.

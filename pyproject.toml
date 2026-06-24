@@ -37,10 +37,10 @@ packages = ["src/netbird_manage"]
 [tool.ruff]
 target-version = "py310"
 line-length = 120
-src = ["src", "my"]
+src = ["src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
 
 [tool.ty.src]
-include = ["src", "my"]
+include = ["src"]

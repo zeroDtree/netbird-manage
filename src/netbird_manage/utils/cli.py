@@ -8,6 +8,14 @@ import os
 DEFAULT_API_BASE = "https://api.netbird.io"
 
 
+def load_netbird_env() -> None:
+    """Load NETBIRD_* from .env and .env.secrets in the current working directory."""
+    from dotenv import load_dotenv
+
+    load_dotenv(".env")
+    load_dotenv(".env.secrets")
+
+
 def netbird_connection_parent_parser() -> argparse.ArgumentParser:
     """Return a parent parser with common NetBird connection flags (add_help=False)."""
     p = argparse.ArgumentParser(add_help=False)

@@ -13,7 +13,7 @@ delete columns:
   email (required per row); other columns ignored
 
 Environment: NETBIRD_API_BASE, NETBIRD_TOKEN (or --token).
-Optional: a ``.env`` file in the current working directory is loaded automatically (same variable names).
+Loads ``.env`` and ``.env.secrets`` from the current working directory (same variable names).
 
 Run: uv sync && uv run user-manage import --file users.csv --dry-run
 """
@@ -29,9 +29,7 @@ from typing import Any
 
 try:
     import requests
-    from dotenv import load_dotenv
-
-    from ..utils.cli import netbird_connection_parent_parser
+    from ..utils.cli import load_netbird_env, netbird_connection_parent_parser
     from ..utils.client import (
         api_url,
         json_headers,
@@ -442,7 +440,7 @@ def run_delete(args: argparse.Namespace) -> int:
 def run(argv: list[str] | None = None) -> int:
     raw = list(sys.argv[1:] if argv is None else argv)
     # Populate os.environ from .env before argparse defaults read NETBIRD_*.
-    load_dotenv()
+    load_netbird_env()
 
     parent = _parent_parser()
     main = argparse.ArgumentParser(

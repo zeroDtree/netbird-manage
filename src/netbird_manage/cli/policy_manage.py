@@ -7,7 +7,7 @@ Subcommands:
   remove-user-groups — delete those groups and pairing policy; optional strip clients group from user auto_groups.
   manage-server-peer — add or remove a peer from the user's servers group (GET/merge/PUT /api/groups).
 
-Environment: NETBIRD_API_BASE, NETBIRD_TOKEN (or --token). Loads ``.env`` from the current working directory.
+Environment: NETBIRD_API_BASE, NETBIRD_TOKEN (or --token). Loads ``.env`` and ``.env.secrets`` from the current working directory.
 
 Run: uv run policy-manage ensure-user-groups --email user@example.com --dry-run
 """
@@ -20,18 +20,12 @@ import os
 import sys
 import time
 
-try:
-    from dotenv import load_dotenv
-except ImportError:
-    print("Install dependencies: uv sync", file=sys.stderr)
-    raise
-
 from ..services.assign_core import (
     assign_peer_to_user_servers,
     ensure_user_groups_and_policy,
     remove_user_groups_and_policy,
 )
-from ..utils.cli import netbird_connection_parent_parser
+from ..utils.cli import load_netbird_env, netbird_connection_parent_parser
 from ..utils.client import session_with_token
 
 
@@ -154,7 +148,7 @@ def run_manage_server_peer(args: argparse.Namespace) -> int:
 
 
 def run(argv: list[str] | None = None) -> int:
-    load_dotenv()
+    load_netbird_env()
     parent = _parent_parser()
     main = argparse.ArgumentParser(
         description="NetBird per-user groups and machine assignment CLI.",

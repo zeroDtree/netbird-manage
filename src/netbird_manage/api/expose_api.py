@@ -7,7 +7,6 @@ import os
 import sys
 
 try:
-    from dotenv import load_dotenv
     from fastapi import Depends, FastAPI, HTTPException, status
     from pydantic import BaseModel, Field
 except ImportError:
@@ -19,6 +18,7 @@ from ..services.assign_core import (
     ensure_user_groups_and_policy,
     remove_user_groups_and_policy,
 )
+from ..utils.cli import load_netbird_env
 from ..utils.client import session_with_token
 from .deps import netbird_base, netbird_token, verify_bearer
 
@@ -154,7 +154,7 @@ def api_manage_server_peer_remove(body: ManageServerPeerBody) -> dict:
 
 
 def main() -> None:
-    load_dotenv()
+    load_netbird_env()
     import uvicorn
 
     host = os.environ.get("ASSIGN_API_HOST", "0.0.0.0")
